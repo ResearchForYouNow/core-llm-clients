@@ -1,0 +1,29 @@
+root = true
+
+[*.{kt,kts}]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+insert_final_newline = true
+max_line_length = 120
+ktlint_code_style = ktlint_official
+
+# Prefer multiline parameters in signatures
+ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 1
+# Allow trailing commas in multiline lists
+ij_kotlin_allow_trailing_comma = true
+# Prefer single-line call arguments by default (IDE formatter hints)
+ij_kotlin_call_parameters_wrap = off
+ij_kotlin_call_parameters_new_line_after_left_paren = false
+ij_kotlin_call_arguments_wrap = off
+ij_kotlin_call_arguments_new_line_after_left_paren = false
+
+# Allow multiline expressions to start on the same line (disable wrapping rule)
+ktlint_standard_multiline-expression-wrapping = disabled
+# Disable dependent rule which requires the wrapping rule
+ktlint_standard_string-template-indent = disabled
+
+[*.md]
+trim_trailing_whitespace = false
+insert_final_newline = true
