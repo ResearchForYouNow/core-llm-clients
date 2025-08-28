@@ -1,9 +1,13 @@
+﻿import org.gradle.jvm.tasks.Jar
+import org.jetbrains.dokka.gradle.DokkaTask
+
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.serialization")
+    kotlin("jvm") version "2.1.21"
+    kotlin("plugin.serialization") version "2.1.21"
     `java-library`
     `maven-publish`
-    id("org.jetbrains.dokka")
+    signing
+    id("org.jetbrains.dokka") version "1.9.10"
 }
 
 kotlin {
@@ -12,7 +16,66 @@ kotlin {
 
 dependencies {
     api(project(":core-api"))
-    api(project(":providers:openai"))
-    api(project(":providers:gemini"))
+
+    implementation(project(":providers:openai"))
+    implementation(project(":providers:gemini"))
+
+    api(libs.slf4j.api)
+    api(libs.kotlinx.coroutines.core)
     api(libs.bundles.ktor.client)
+    implementation(libs.kotlinx.serialization.json)
+    testImplementation(libs.bundles.testing)
+}
+
+java {
+    withSourcesJar()
+}
+
+tasks.withType<DokkaTask>().configureEach {
+    outputDirectory.set(buildDir.resolve("dokka"))
+}
+
+val javadocJar by tasks.registering(Jar::class) {
+    dependsOn(tasks.named("dokkaJavadoc"))
+    archiveClassifier.set("javadoc")
+    from(layout.buildDirectory.dir("dokka"))
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+            artifactId = "llm-clients"
+            artifact(javadocJar)
+
+            pom {
+                name.set("LLM Clients")
+                description.set("Complete LLM clients library with unified interface for various LLM providers.")
+                url.set("https://github.com/ResearchForYouNow/core-llm-clients")
+                licenses {
+                    license {
+                        name.set("Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("researchforyounow")
+                        name.set("Research For You Now")
+                        email.set("researchforyounow@gmail.com")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/ResearchForYouNow/core-llm-clients")
+                    connection.set("scm:git:https://github.com/ResearchForYouNow/core-llm-clients.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/ResearchForYouNow/core-llm-clients.git")
+                }
+            }
+        }
+    }
+}
+
+signing {
+    useGpgCmd()
+    sign(publishing.publications["maven"])
 }

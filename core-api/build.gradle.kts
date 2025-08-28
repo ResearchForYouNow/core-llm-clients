@@ -1,11 +1,12 @@
-import java.util.Properties
-import kotlin.apply
+﻿import org.gradle.jvm.tasks.Jar
+import org.jetbrains.dokka.gradle.DokkaTask
 
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     `java-library`
     `maven-publish`
+    signing
     id("org.jetbrains.dokka")
 }
 
@@ -20,47 +21,55 @@ dependencies {
     testImplementation(libs.bundles.testing)
 }
 
-val keys = project.rootProject
-    .file("keys.properties")
-    .inputStream()
-    .use {
-        Properties().apply { load(it) }
-    }
+java {
+    withSourcesJar()
+}
+
+tasks.withType<DokkaTask>().configureEach {
+    outputDirectory.set(buildDir.resolve("dokka"))
+}
+
+val javadocJar by tasks.registering(Jar::class) {
+    dependsOn(tasks.named("dokkaJavadoc"))
+    archiveClassifier.set("javadoc")
+    from(layout.buildDirectory.dir("dokka"))
+}
 
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            groupId = "org.researchforyounow.core"
-            artifactId = "llm-clients"
-            version = "0.0.6"
-
             from(components["java"])
+            artifactId = "core-api"
+            artifact(javadocJar)
 
-            // Optional: Add POM information
             pom {
-                name.set("Llm clients")
-                description.set("A LLM clients core library for Research For You Now organization")
-                url.set("https://github.com/researchforyounow/core-llm-clients")
+                name.set("LLM Clients - Core API")
+                description.set("Public API for the ResearchForYouNow LLM client stack.")
+                url.set("https://github.com/ResearchForYouNow/core-llm-clients")
                 licenses {
                     license {
-                        name.set("The Apache License, Version 2.0")
-                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                        name.set("Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
                     }
+                }
+                developers {
+                    developer {
+                        id.set("researchforyounow")
+                        name.set("Research For You Now")
+                        email.set("researchforyounow@gmail.com")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/ResearchForYouNow/core-llm-clients")
+                    connection.set("scm:git:https://github.com/ResearchForYouNow/core-llm-clients.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/ResearchForYouNow/core-llm-clients.git")
                 }
             }
         }
     }
+}
 
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/researchforyounow/core-llm-clients")
-            credentials {
-                username = keys["GITHUB_USERNAME"] as? String
-                    ?: throw GradleException("GitHub username not found.")
-                password = keys["GITHUB_TOKEN"] as? String
-                    ?: throw GradleException("GitHub token not found.")
-            }
-        }
-    }
+signing {
+    useGpgCmd()
+    sign(publishing.publications["maven"])
 }

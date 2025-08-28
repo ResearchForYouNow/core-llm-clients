@@ -68,9 +68,8 @@ Ordering rules:
 - [x] Add repository governance files
 - [x] Make Gemini cleanup configurable
 - [x] Apply Ktlint formatting rules for whole project
+- [x] Dokka site and publishing instructions
 
 ## Pending (prioritized)
-- [ ] Dokka site and publishing instructions
-  - Why: Auto-generates API docs and provides steps to publish to GitHub Pages for discoverability.
 - [ ] Integration test plan with real keys (CI-gated)
   - Why: Validates end-to-end behavior against real providers in a secrets-gated nightly/release-tag job.
