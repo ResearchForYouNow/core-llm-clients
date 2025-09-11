@@ -1,11 +1,11 @@
 package examples
 
-import client.LlmClientFactory
-import config.OpenAiConfig
-import config.OpenAiModel
+import io.github.researchforyounow.llm.client.LlmClientFactory
 import kotlinx.coroutines.runBlocking
-import request.GenerationRequest
-import usage.LlmUsage
+import io.github.researchforyounow.llm.providers.openai.config.OpenAiConfig
+import io.github.researchforyounow.llm.providers.openai.config.OpenAiModel
+import io.github.researchforyounow.llm.request.GenerationRequest
+import io.github.researchforyounow.llm.usage.LlmUsage
 
 object OpenAiUsageExample {
     @JvmStatic
@@ -21,7 +21,7 @@ object OpenAiUsageExample {
                 usageSink = { usage: LlmUsage ->
                     println(message = "prompt=${usage.promptTokens} completion=${usage.completionTokens}")
                 },
-                model = OpenAiModel.GPT_4_TURBO_2024_04_09
+                model = OpenAiModel.GPT_4_TURBO_2024_04_09,
             )
             val client = factory.createOpenAiClient(config = config)
 

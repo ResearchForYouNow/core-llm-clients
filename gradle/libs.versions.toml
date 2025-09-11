@@ -1,12 +1,12 @@
 [versions]
-kotlin = "2.1.21"
+kotlin = "2.2.10"
 
 # Ktor
-ktor = "2.3.7"
+ktor = "3.2.3"
 
 # Kotlinx
-kotlinx-serialization = "1.6.0"
-kotlinx-coroutines = "1.7.3"
+kotlinx-serialization = "1.9.0"
+kotlinx-coroutines = "1.10.2"
 
 # Logging
 slf4j = "2.0.13"

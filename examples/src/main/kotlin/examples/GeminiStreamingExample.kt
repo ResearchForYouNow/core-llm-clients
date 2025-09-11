@@ -1,10 +1,10 @@
 package examples
 
-import client.LlmClientFactory
-import config.GeminiConfig
+import io.github.researchforyounow.llm.client.LlmClientFactory
+import io.github.researchforyounow.llm.providers.gemini.config.GeminiConfig
+import io.github.researchforyounow.llm.request.GenerationRequest
+import io.github.researchforyounow.llm.usage.LlmUsage
 import kotlinx.coroutines.runBlocking
-import request.GenerationRequest
-import usage.LlmUsage
 
 /**
  * Minimal streaming example for the Gemini provider.

@@ -14,9 +14,6 @@ application {
 
 dependencies {
     implementation(project(":core"))
-    implementation(project(":core-api"))
-    implementation(project(":providers:openai"))
-    implementation(project(":providers:gemini"))
 
     implementation(libs.bundles.ktor.client)
     implementation(libs.kotlinx.serialization.json)

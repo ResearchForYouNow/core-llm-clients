@@ -1,10 +1,10 @@
 package examples
 
-import client.LlmClientFactory
-import config.OpenAiConfig
+import io.github.researchforyounow.llm.client.LlmClientFactory
 import kotlinx.coroutines.runBlocking
-import request.GenerationRequest
-import usage.LlmUsage
+import io.github.researchforyounow.llm.providers.openai.config.OpenAiConfig
+import io.github.researchforyounow.llm.request.GenerationRequest
+import io.github.researchforyounow.llm.usage.LlmUsage
 
 /**
  * Minimal streaming example for the OpenAI provider.

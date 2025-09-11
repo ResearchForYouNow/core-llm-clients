@@ -1,25 +1,20 @@
 plugins {
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+    kotlin("multiplatform") version "2.1.21" apply false
     kotlin("jvm") version "2.1.21" apply false
     kotlin("plugin.serialization") version "2.1.21" apply false
-    `java-library`
-    id("maven-publish")
-    id("signing")
     id("org.jetbrains.dokka") version "1.9.10" apply false
     id("org.jlleitschuh.gradle.ktlint") version "12.1.1" apply false
 }
 
 allprojects {
     group = "io.github.researchforyounow"
-    version = "0.6.0"
-}
+    version = "0.7.2"
 
-group = "io.github.researchforyounow"
-version = "0.6.0"
-
-repositories {
-    google()
-    mavenCentral()
+    repositories {
+        google()
+        mavenCentral()
+    }
 }
 
 nexusPublishing {

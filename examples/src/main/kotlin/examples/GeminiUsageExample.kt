@@ -1,11 +1,11 @@
 package examples
 
-import client.LlmClientFactory
-import config.GeminiConfig
-import config.GeminiModel
+import io.github.researchforyounow.llm.client.LlmClientFactory
+import io.github.researchforyounow.llm.providers.gemini.config.GeminiConfig
+import io.github.researchforyounow.llm.providers.gemini.config.GeminiModel
+import io.github.researchforyounow.llm.request.GenerationRequest
+import io.github.researchforyounow.llm.usage.LlmUsage
 import kotlinx.coroutines.runBlocking
-import request.GenerationRequest
-import usage.LlmUsage
 
 object GeminiUsageExample {
     @JvmStatic
@@ -21,7 +21,7 @@ object GeminiUsageExample {
                 usageSink = { usage: LlmUsage ->
                     println(message = "prompt=${usage.promptTokens} completion=${usage.completionTokens}")
                 },
-                model = GeminiModel.GEMINI_1_5_FLASH_LATEST
+                model = GeminiModel.GEMINI_1_5_FLASH_LATEST,
             )
             val client = factory.createGeminiClient(config = config)
 

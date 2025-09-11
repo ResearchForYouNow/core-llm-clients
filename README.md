@@ -23,7 +23,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.github.researchforyounow:llm-clients:0.6.0")
+    implementation("io.github.researchforyounow:llm-clients:0.7.0")
 }
 ```
 
@@ -33,7 +33,7 @@ dependencies {
 <dependency>
     <groupId>io.github.researchforyounow</groupId>
     <artifactId>llm-clients</artifactId>
-    <version>0.6.0</version>
+    <version>0.7.0</version>
 </dependency>
 ```
 
