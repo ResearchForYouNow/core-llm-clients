@@ -1,6 +1,7 @@
 package io.github.researchforyounow.llm.providers.openai.request
 
 import io.github.researchforyounow.llm.providers.openai.config.OpenAiConfig
+import io.github.researchforyounow.llm.providers.openai.config.Models
 import io.github.researchforyounow.llm.providers.openai.config.ResponseFormat
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -138,8 +139,20 @@ internal class OpenAiRequestBuilder private constructor(
             finalPrompt = "$prompt Please provide your response in JSON format."
         }
 
+        // Safety check for structured outputs on supported models
+        if (responseFormat == ResponseFormat.JSON_SCHEMA) {
+            val allowed = setOf(
+                Models.GPT_4O_2024_08_06,
+                Models.GPT_4O_MINI,
+            )
+            require(config.modelName in allowed) {
+                "JSON_SCHEMA response_format is supported only on select models. Got '${config.modelName}'. " +
+                    "Use one of: ${allowed.joinToString()} or prefer NDJSON streaming for robust structured outputs."
+            }
+        }
+
         return buildJsonObject {
-            put("model", config.model.modelName)
+            put("model", config.modelName)
             putJsonArray("messages") {
                 addJsonObject {
                     put("role", "system")

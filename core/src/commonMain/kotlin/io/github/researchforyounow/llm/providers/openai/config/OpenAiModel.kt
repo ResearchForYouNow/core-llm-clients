@@ -6,6 +6,10 @@ package io.github.researchforyounow.llm.providers.openai.config
  * Note: These are model identifiers accepted by the chat.completions API.
  * Some legacy or preview identifiers are included for compatibility.
  */
+@Deprecated(
+    message = "Use raw string model names via OpenAiConfig.modelName or Models constants.",
+    replaceWith = ReplaceWith("Models"),
+)
 enum class OpenAiModel(
     val modelName: String,
 ) {

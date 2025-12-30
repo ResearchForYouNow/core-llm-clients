@@ -1,13 +1,12 @@
 package examples
 
-import io.github.researchforyounow.llm.error.LlmError
-
 import io.github.researchforyounow.llm.client.LlmClientFactory
-import kotlinx.coroutines.runBlocking
+import io.github.researchforyounow.llm.error.LlmError
 import io.github.researchforyounow.llm.providers.openai.config.OpenAiConfig
 import io.github.researchforyounow.llm.providers.openai.request.ImageGenerationRequest
 import io.github.researchforyounow.llm.providers.openai.request.ImageResponseFormat
 import io.github.researchforyounow.llm.providers.openai.request.OpenAiImageModel
+import kotlinx.coroutines.runBlocking
 import java.util.UUID
 
 /**

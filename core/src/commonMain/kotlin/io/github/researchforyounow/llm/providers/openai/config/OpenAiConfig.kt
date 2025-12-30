@@ -1,4 +1,5 @@
 package io.github.researchforyounow.llm.providers.openai.config
+
 import io.github.researchforyounow.llm.client.RetryPolicy
 import io.github.researchforyounow.llm.usage.LlmUsageSink
 
@@ -10,7 +11,7 @@ import io.github.researchforyounow.llm.usage.LlmUsageSink
  * It includes both API parameters (apiKey, apiUrl) and generation parameters.
  */
 data class OpenAiConfig(
-    val model: OpenAiModel = OpenAiModel.GPT_4_TURBO_2024_04_09,
+    val modelName: String = DEFAULT_MODEL_NAME,
     val temperature: Double = DEFAULT_TEMPERATURE,
     val maxTokens: Int = DEFAULT_MAX_TOKENS,
     val topP: Double = DEFAULT_TOP_P,
@@ -32,7 +33,7 @@ data class OpenAiConfig(
     val ndjsonDelimiter: String = "\n",
 ) {
     init {
-        require(model.modelName.isNotEmpty()) { "Model name cannot be empty" }
+        require(modelName.isNotEmpty()) { "Model name cannot be empty" }
         require(temperature in 0.0..2.0) { "Temperature must be between 0.0 and 2.0, got: $temperature" }
         require(maxTokens > 0) { "MaxTokens must be positive, got: $maxTokens" }
         require(topP in 0.0..1.0) { "TopP must be between 0.0 and 1.0, got: $topP" }
@@ -62,7 +63,7 @@ data class OpenAiConfig(
         /**
          * Default model name for OpenAI.
          */
-        const val DEFAULT_MODEL_NAME = "gpt-4-turbo-2024-04-09"
+        const val DEFAULT_MODEL_NAME = Models.GPT_4O_2024_08_06
 
         /**
          * Default temperature for OpenAI.
@@ -107,13 +108,13 @@ data class OpenAiConfig(
         /**
          * Creates a configuration with custom model name and default generation parameters.
          */
-        fun withModel(
-            model: OpenAiModel,
-        ): OpenAiConfig {
-            return OpenAiConfig(
-                model = model,
-            )
-        }
+        @Deprecated(
+            message = "Use withModel(modelName: String) or pass modelName in the constructor.",
+            replaceWith = ReplaceWith("withModel(modelName)"),
+        )
+        fun withModel(model: OpenAiModel): OpenAiConfig = OpenAiConfig(modelName = model.modelName)
+
+        fun withModel(modelName: String): OpenAiConfig = OpenAiConfig(modelName = modelName)
 
         /**
          * Creates a configuration optimized for structured JSON responses.
@@ -137,4 +138,12 @@ data class OpenAiConfig(
             )
         }
     }
+
+    @Deprecated(
+        message = "Use primary constructor with modelName: String. OpenAiModel is deprecated.",
+        replaceWith = ReplaceWith("OpenAiConfig(modelName = model.modelName)"),
+    )
+    constructor(model: OpenAiModel) : this(
+        modelName = model.modelName,
+    )
 }

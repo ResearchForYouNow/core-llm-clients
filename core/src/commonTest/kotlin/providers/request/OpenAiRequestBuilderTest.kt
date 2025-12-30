@@ -1,7 +1,7 @@
 package providers.request
 
 import io.github.researchforyounow.llm.providers.openai.config.OpenAiConfig
-import io.github.researchforyounow.llm.providers.openai.config.OpenAiModel
+import io.github.researchforyounow.llm.providers.openai.config.Models
 import io.github.researchforyounow.llm.providers.openai.config.ResponseFormat
 import io.github.researchforyounow.llm.providers.openai.request.OpenAiRequestBuilder
 import kotlin.test.Test
@@ -11,11 +11,11 @@ import kotlin.test.assertTrue
 class OpenAiRequestBuilderTest {
     @Test
     fun `buildRequest uses defaults and sets messages`() {
-        val cfg = OpenAiConfig.defaultConfig().copy(apiKey = "k", model = OpenAiModel.GPT_4O)
+        val cfg = OpenAiConfig.defaultConfig().copy(apiKey = "k", modelName = Models.GPT_4O)
         val builder = OpenAiRequestBuilder.create(cfg)
         val json = builder.buildRequest(systemMessage = "sys", prompt = "user")
 
-        assertEquals(OpenAiModel.GPT_4O.modelName, json["model"]?.toString()?.trim('"'))
+        assertEquals(Models.GPT_4O, json["model"]?.toString()?.trim('"'))
         val messages = json["messages"]!!.toString()
         assertTrue(messages.contains("\"role\":\"system\""))
         assertTrue(messages.contains("\"content\":\"sys\""))

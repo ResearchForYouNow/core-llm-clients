@@ -126,7 +126,7 @@ class OpenAiClientImpl private constructor(
      * Returns the model name being used by this client.
      */
     override fun getModelName(): String {
-        return config.model.modelName
+        return config.modelName
     }
 
     /**
