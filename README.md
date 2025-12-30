@@ -19,18 +19,11 @@ A Kotlin library for interacting with various Large Language Model (LLM) provide
 
 ```kotlin
 repositories {
-    maven {
-        name = "GitHubPackages"
-        url = uri("https://maven.pkg.github.com/researchforyounow/core-llm-clients")
-        credentials {
-            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_USERNAME")
-            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
+    mavenCentral()
 }
 
 dependencies {
-    implementation("org.researchforyounow.core:llm-clients:0.0.6")
+    implementation("io.github.researchforyounow:llm-clients:0.7.0")
 }
 ```
 
@@ -38,9 +31,9 @@ dependencies {
 
 ```xml
 <dependency>
-    <groupId>org.researchforyounow.core</groupId>
+    <groupId>io.github.researchforyounow</groupId>
     <artifactId>llm-clients</artifactId>
-    <version>0.0.6</version>
+    <version>0.7.0</version>
 </dependency>
 ```
 

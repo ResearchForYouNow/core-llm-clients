@@ -15,7 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "llm-clients"
 include(":core")
-include("core-api")
-include(":providers:openai")
-include(":providers:gemini")
 include(":examples")

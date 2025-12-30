@@ -1,11 +1,12 @@
 package examples
 
-import client.LlmClientFactory
-import config.OpenAiConfig
+import io.github.researchforyounow.llm.client.LlmClientFactory
+import io.github.researchforyounow.llm.error.LlmError
+import io.github.researchforyounow.llm.providers.openai.config.OpenAiConfig
+import io.github.researchforyounow.llm.providers.openai.request.ImageGenerationRequest
+import io.github.researchforyounow.llm.providers.openai.request.ImageResponseFormat
+import io.github.researchforyounow.llm.providers.openai.request.OpenAiImageModel
 import kotlinx.coroutines.runBlocking
-import request.ImageGenerationRequest
-import request.ImageResponseFormat
-import request.OpenAiImageModel
 import java.util.UUID
 
 /**
@@ -60,9 +61,10 @@ object OpenAiImageExample {
             } else {
                 val err = result.exceptionOrNull()
                 when (err) {
-                    is error.LlmError.ProviderHttpError -> {
+                    is LlmError.ProviderHttpError -> {
                         System.err.println("Image generation failed: status=${err.statusCode} body=${err.body}")
                     }
+
                     else -> System.err.println("Image generation failed: ${err?.message}")
                 }
             }
