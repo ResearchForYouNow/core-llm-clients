@@ -9,6 +9,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class OpenAiRequestBuilderTest {
+
     @Test
     fun `buildRequest uses defaults and sets messages`() {
         val cfg = OpenAiConfig.defaultConfig().copy(apiKey = "k", modelName = Models.GPT_4O)
@@ -55,5 +56,69 @@ class OpenAiRequestBuilderTest {
         val bias = json["logit_bias"]!!.toString()
         assertTrue(bias.contains("\"123\":1.5"))
         assertTrue(bias.contains("\"456\":-0.5"))
+    }
+
+    @Test
+    fun `enableWebSearch omits temperature and adds web_search_options`() {
+        val cfg = OpenAiConfig.defaultConfig().copy(
+            enableWebSearch = true,
+            modelName = Models.GPT_4O_MINI_SEARCH_PREVIEW,
+            responseFormat = ResponseFormat.JSON_SCHEMA,
+            jsonSchema = "{\"type\":\"object\",\"properties\":{\"ok\":{\"type\":\"boolean\"}},\"required\":[\"ok\"]}",
+        )
+        val builder = OpenAiRequestBuilder.create(cfg)
+        val json = builder.buildRequest(systemMessage = "s", prompt = "p")
+        assertEquals(json["temperature"], null)
+        assertEquals(json["top_p"], null)
+        assertEquals(json["frequency_penalty"], null)
+        assertEquals(json["presence_penalty"], null)
+        assertTrue(json["web_search_options"] != null)
+    }
+
+    @Test
+    fun `json_schema includes name and schema wrapper`() {
+        val cfg = OpenAiConfig.defaultConfig().copy(
+            modelName = Models.GPT_4O_2024_08_06,
+            responseFormat = ResponseFormat.JSON_SCHEMA,
+            jsonSchema = "{\"type\":\"object\",\"properties\":{\"ok\":{\"type\":\"boolean\"}},\"required\":[\"ok\"]}",
+            jsonSchemaName = "result",
+        )
+        val builder = OpenAiRequestBuilder.create(cfg)
+        val json = builder.buildRequest(systemMessage = "s", prompt = "p")
+        val responseFormat = json["response_format"]!!.toString()
+        assertTrue(responseFormat.contains("\"type\":\"json_schema\""))
+        assertTrue(responseFormat.contains("\"name\":\"result\""))
+        assertTrue(responseFormat.contains("\"schema\""))
+    }
+
+    @Test
+    fun `json_schema uses wrapper when already provided`() {
+        val cfg = OpenAiConfig.defaultConfig().copy(
+            modelName = Models.GPT_4O_2024_08_06,
+            responseFormat = ResponseFormat.JSON_SCHEMA,
+            jsonSchema = "{\"name\":\"wrapped\",\"schema\":{\"type\":\"object\"}}",
+            jsonSchemaName = "ignored",
+        )
+        val builder = OpenAiRequestBuilder.create(cfg)
+        val json = builder.buildRequest(systemMessage = "s", prompt = "p")
+        val responseFormat = json["response_format"]!!.toString()
+        assertTrue(responseFormat.contains("\"name\":\"wrapped\""))
+        assertTrue(responseFormat.contains("\"schema\":{\"type\":\"object\"}"))
+        assertTrue(!responseFormat.contains("\"schema\":{\"name\""))
+    }
+
+    @Test
+    fun `json_schema with name and schema non-wrapper is still wrapped`() {
+        val cfg = OpenAiConfig.defaultConfig().copy(
+            modelName = Models.GPT_4O_2024_08_06,
+            responseFormat = ResponseFormat.JSON_SCHEMA,
+            jsonSchema = "{\"name\":123,\"schema\":\"string\"}",
+            jsonSchemaName = "result",
+        )
+        val builder = OpenAiRequestBuilder.create(cfg)
+        val json = builder.buildRequest(systemMessage = "s", prompt = "p")
+        val responseFormat = json["response_format"]!!.toString()
+        assertTrue(responseFormat.contains("\"name\":\"result\""))
+        assertTrue(responseFormat.contains("\"schema\""))
     }
 }

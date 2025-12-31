@@ -23,9 +23,11 @@ data class OpenAiConfig(
     val user: String? = null,
     val logitBias: Map<String, Double> = emptyMap(),
     val stream: Boolean = DEFAULT_STREAM,
+    val enableWebSearch: Boolean = false,
     val apiKey: String = "",
     val apiUrl: String = DEFAULT_API_URL,
     val jsonSchema: String? = null,
+    val jsonSchemaName: String = DEFAULT_JSON_SCHEMA_NAME,
     val retryPolicy: RetryPolicy = RetryPolicy.NO_RETRY,
     val usageSink: LlmUsageSink? = null,
     val organization: String? = null,
@@ -47,6 +49,7 @@ data class OpenAiConfig(
             require(bias in -100.0..100.0) { "Logit bias values must be between -100.0 and 100.0, got: $bias" }
         }
         require(apiUrl.isNotEmpty()) { "API URL cannot be empty" }
+        require(jsonSchemaName.isNotBlank()) { "jsonSchemaName cannot be blank" }
     }
 
     /**
@@ -101,6 +104,11 @@ data class OpenAiConfig(
         const val DEFAULT_API_URL = "https://api.openai.com/v1/chat/completions"
 
         /**
+         * Default JSON schema name for structured outputs.
+         */
+        const val DEFAULT_JSON_SCHEMA_NAME = "response"
+
+        /**
          * Creates a default configuration suitable for most use cases.
          */
         fun defaultConfig(): OpenAiConfig = OpenAiConfig()
@@ -145,5 +153,60 @@ data class OpenAiConfig(
     )
     constructor(model: OpenAiModel) : this(
         modelName = model.modelName,
+    )
+
+    @Deprecated(
+        message = "Constructor signature updated to include enableWebSearch; use named arguments or primary constructor.",
+        replaceWith = ReplaceWith(
+            "OpenAiConfig(modelName, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, " +
+                "stopSequences, seed, responseFormat, user, logitBias, stream, enableWebSearch = false, " +
+                "apiKey, apiUrl, jsonSchema, retryPolicy, usageSink, organization, streamParsingMode, ndjsonDelimiter)",
+        ),
+    )
+    constructor(
+        modelName: String = DEFAULT_MODEL_NAME,
+        temperature: Double = DEFAULT_TEMPERATURE,
+        maxTokens: Int = DEFAULT_MAX_TOKENS,
+        topP: Double = DEFAULT_TOP_P,
+        frequencyPenalty: Double = DEFAULT_FREQUENCY_PENALTY,
+        presencePenalty: Double = DEFAULT_PRESENCE_PENALTY,
+        stopSequences: List<String> = emptyList(),
+        seed: Int? = null,
+        responseFormat: ResponseFormat = ResponseFormat.JSON_OBJECT,
+        user: String? = null,
+        logitBias: Map<String, Double> = emptyMap(),
+        stream: Boolean = DEFAULT_STREAM,
+        apiKey: String = "",
+        apiUrl: String = DEFAULT_API_URL,
+        jsonSchema: String? = null,
+        jsonSchemaName: String = DEFAULT_JSON_SCHEMA_NAME,
+        retryPolicy: RetryPolicy = RetryPolicy.NO_RETRY,
+        usageSink: LlmUsageSink? = null,
+        organization: String? = null,
+        streamParsingMode: StreamParsingMode = StreamParsingMode.NDJSON_PER_LINE,
+        ndjsonDelimiter: String = "\n",
+    ) : this(
+        modelName = modelName,
+        temperature = temperature,
+        maxTokens = maxTokens,
+        topP = topP,
+        frequencyPenalty = frequencyPenalty,
+        presencePenalty = presencePenalty,
+        stopSequences = stopSequences,
+        seed = seed,
+        responseFormat = responseFormat,
+        user = user,
+        logitBias = logitBias,
+        stream = stream,
+        enableWebSearch = false,
+        apiKey = apiKey,
+        apiUrl = apiUrl,
+        jsonSchema = jsonSchema,
+        jsonSchemaName = jsonSchemaName,
+        retryPolicy = retryPolicy,
+        usageSink = usageSink,
+        organization = organization,
+        streamParsingMode = streamParsingMode,
+        ndjsonDelimiter = ndjsonDelimiter,
     )
 }
