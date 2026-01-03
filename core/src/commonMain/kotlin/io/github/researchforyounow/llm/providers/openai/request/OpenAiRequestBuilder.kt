@@ -144,6 +144,8 @@ internal class OpenAiRequestBuilder private constructor(
             val allowed = setOf(
                 Models.GPT_4O_2024_08_06,
                 Models.GPT_4O_MINI,
+                Models.GPT_4O_SEARCH_PREVIEW,
+                Models.GPT_4O_MINI_SEARCH_PREVIEW,
             )
             require(config.modelName in allowed) {
                 "JSON_SCHEMA response_format is supported only on select models. Got '${config.modelName}'. " +
@@ -163,12 +165,19 @@ internal class OpenAiRequestBuilder private constructor(
                     put("content", finalPrompt)
                 }
             }
-            put("temperature", temperature)
+            if (!config.enableWebSearch) {
+                put("temperature", temperature)
+            }
             put("max_tokens", maxTokens)
-            put("top_p", topP)
-            put("frequency_penalty", frequencyPenalty)
-            put("presence_penalty", presencePenalty)
+            if (!config.enableWebSearch) {
+                put("top_p", topP)
+                put("frequency_penalty", frequencyPenalty)
+                put("presence_penalty", presencePenalty)
+            }
             put("stream", stream)
+            if (config.enableWebSearch) {
+                put("web_search_options", buildJsonObject { })
+            }
 
             // Add stop sequences if provided
             if (stopSequences.isNotEmpty()) {
@@ -215,9 +224,16 @@ internal class OpenAiRequestBuilder private constructor(
                         "jsonSchema must be provided when responseFormat == JSON_SCHEMA"
                     }
                     val schemaElement = Json.parseToJsonElement(config.jsonSchema)
+                    val wrapper = schemaElement as? JsonObject
+                    val nameElement = wrapper?.get("name") as? JsonPrimitive
+                    val schemaWrapper = wrapper?.get("schema") as? JsonObject
+                    val alreadyWrapped = nameElement?.isString == true && schemaWrapper != null
                     buildJsonObject {
                         put("type", "json_schema")
-                        put("json_schema", schemaElement)
+                        put("json_schema", if (alreadyWrapped) schemaElement else buildJsonObject {
+                            put("name", config.jsonSchemaName)
+                            put("schema", schemaElement)
+                        })
                     }.also { responseFormatObject ->
                         put("response_format", responseFormatObject)
                     }

@@ -23,7 +23,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.github.researchforyounow:llm-clients:0.7.0")
+    implementation("io.github.researchforyounow:llm-clients:0.7.3")
 }
 ```
 
@@ -33,7 +33,7 @@ dependencies {
 <dependency>
     <groupId>io.github.researchforyounow</groupId>
     <artifactId>llm-clients</artifactId>
-    <version>0.7.0</version>
+    <version>0.7.3</version>
 </dependency>
 ```
 
@@ -69,7 +69,7 @@ val factory = initializeLibrary()
 
 val openAiClient = factory.createOpenAiClient(
     config = OpenAiConfig(
-        model = OpenAiModel.GPT_4_TURBO_2024_04_09,
+        modelName = Models.GPT_4O_2024_08_06,
         temperature = 0.3
     )
 )
@@ -113,8 +113,9 @@ For a comprehensive, production-ready example showing:
 ## Supported Models
 
 ### OpenAI
-- GPT-4 Turbo (default: `gpt-4-turbo-2024-04-09`)
-- GPT-3.5 Turbo
+- GPT-4o (default: `gpt-4o-2024-08-06`)
+- GPT-4.1 family
+- Search preview models (`gpt-4o-search-preview`, `gpt-4o-mini-search-preview`)
 - Custom models via configuration
 
 ### Google Gemini
@@ -128,7 +129,7 @@ For a comprehensive, production-ready example showing:
 ```kotlin
 val client = factory.createOpenAiClient(
     config = OpenAiConfig(
-        model = OpenAiModel.GPT_4_TURBO_2024_04_09,  // Optional
+        modelName = Models.GPT_4O_2024_08_06,        // Optional
         temperature = 0.7,                           // Optional (0.0-2.0)
         maxTokens = 2000                             // Optional
     ),
@@ -207,6 +208,38 @@ The `LlmUsage` model normalizes provider-specific fields (e.g., OpenAI
 `prompt_tokens`/`completion_tokens`). Providers that don't return usage simply
 never invoke the sink.
 
+### OpenAI Web Search (chat completions)
+
+Search-preview models use chat completions with `web_search_options`. Enable it
+via `enableWebSearch = true` and omit sampling params (they are ignored).
+
+```kotlin
+@Serializable
+data class WebSearchResult(
+    val answer: String,
+    val sources: List<String>,
+)
+
+val client = factory.createOpenAiClient(
+    config = OpenAiConfig(
+        modelName = Models.GPT_4O_MINI_SEARCH_PREVIEW,
+        responseFormat = ResponseFormat.JSON_SCHEMA,
+        jsonSchemaName = "web_search_result",
+        jsonSchema = """
+            {
+              "type": "object",
+              "properties": {
+                "answer": { "type": "string" },
+                "sources": { "type": "array", "items": { "type": "string" } }
+              },
+              "required": ["answer", "sources"]
+            }
+        """.trimIndent(),
+        enableWebSearch = true,
+    ),
+)
+```
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
@@ -221,7 +254,7 @@ details that live in core-api.
 
 | Provider      | Generate (sync) | Streaming (Flow) | Images | Structured JSON parsing                | Retry policy                       | Usage metrics (LlmUsageSink) | Error mapping (LlmError) | Notes                                  |
 |---------------|-----------------|------------------|--------|----------------------------------------|------------------------------------|------------------------------|--------------------------|----------------------------------------|
-| OpenAI        | Yes             | Yes              | Yes    | Yes (native response_format supported) | Yes (exponential backoff + jitter) | Yes                          | Yes                      | Default model: gpt-4-turbo-2024-04-09  |
+| OpenAI        | Yes             | Yes              | Yes    | Yes (native response_format supported) | Yes (exponential backoff + jitter) | Yes                          | Yes                      | Default model: gpt-4o-2024-08-06       |
 | Google Gemini | Yes             | Yes              | No     | Yes (prompt-guided parsing)            | Yes (exponential backoff + jitter) | Yes                          | Yes                      | Default model: gemini-1.5-flash-latest |
 
 ## Image Generation (OpenAI)
@@ -255,7 +288,7 @@ The LlmClientFactory injects API keys from your environment or secrets manager (
 
 | Parameter        | Type                | Default                                    | Notes                                                |
 |------------------|---------------------|--------------------------------------------|------------------------------------------------------|
-| model            | OpenAiModel         | OpenAiModel.GPT_4_TURBO_2024_04_09         | Use enum. API model id available as model.modelName. |
+| modelName        | String              | gpt-4o-2024-08-06                           | Any OpenAI model id. Helpers in Models.              |
 | temperature      | Double              | 0.28                                       | Range 0.0..2.0.                                      |
 | maxTokens        | Int                 | 4000                                       | Must be > 0.                                         |
 | topP             | Double              | 1.0                                        | Range 0.0..1.0.                                      |
@@ -264,10 +297,12 @@ The LlmClientFactory injects API keys from your environment or secrets manager (
 | stopSequences    | List<String>        | []                                         | Up to 4 sequences.                                   |
 | seed             | Int?                | null                                       | Optional deterministic seed.                         |
 | responseFormat   | ResponseFormat      | JSON_OBJECT                                | TEXT, JSON_OBJECT, or JSON_SCHEMA.                   |
-| jsonSchema       | String?             | null                                       | Used when responseFormat=JSON_SCHEMA.                |
+| jsonSchema       | String?             | null                                       | JSON schema object; wrapper with name is auto-added. |
+| jsonSchemaName   | String              | response                                   | Required by OpenAI for JSON_SCHEMA.                  |
 | user             | String?             | null                                       | Optional user identifier for OpenAI.                 |
 | logitBias        | Map<String, Double> | {}                                         | Up to 300 entries, values -100..100.                 |
 | stream           | Boolean             | false                                      | If true, enables streaming on request.               |
+| enableWebSearch  | Boolean             | false                                      | Adds web_search_options and omits sampling params.   |
 | apiUrl           | String              | https://api.openai.com/v1/chat/completions | Base URL for Chat Completions.                       |
 | retryPolicy      | RetryPolicy         | NO_RETRY                                   | Exponential backoff with jitter when set.            |
 | usageSink        | LlmUsageSink?       | null                                       | Callback for normalized usage metrics.               |

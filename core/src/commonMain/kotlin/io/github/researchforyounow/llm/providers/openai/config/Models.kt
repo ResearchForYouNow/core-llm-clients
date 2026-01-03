@@ -10,6 +10,8 @@ object Models {
     const val GPT_4O_2024_05_13: String = "gpt-4o-2024-05-13"
     const val GPT_4O_2024_08_06: String = "gpt-4o-2024-08-06"
     const val GPT_4O_MINI: String = "gpt-4o-mini"
+    const val GPT_4O_SEARCH_PREVIEW: String = "gpt-4o-search-preview"
+    const val GPT_4O_MINI_SEARCH_PREVIEW: String = "gpt-4o-mini-search-preview"
 
     // GPT-4.1 family
     const val GPT_4_1: String = "gpt-4.1"
@@ -18,4 +20,3 @@ object Models {
     // GPT-4 Turbo (legacy but common)
     const val GPT_4_TURBO_2024_04_09: String = "gpt-4-turbo-2024-04-09"
 }
-
