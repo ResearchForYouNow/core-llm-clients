@@ -18,18 +18,19 @@ kotlin {
             dependencies {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
-                implementation("io.ktor:ktor-client-core:3.2.3")
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.websockets)
             }
         }
         val commonTest by getting {
             dependencies {
                 implementation(libs.bundles.testing)
-                implementation("io.ktor:ktor-client-mock:3.2.3")
+                implementation(libs.ktor.client.mock)
             }
         }
         val jvmMain by getting {
             dependencies {
-                implementation("io.ktor:ktor-client-okhttp:3.2.3")
+                implementation(libs.ktor.client.okhttp)
                 implementation("org.slf4j:slf4j-api:2.0.16")
             }
         }

@@ -5,6 +5,9 @@ import io.github.researchforyounow.llm.providers.openai.config.OpenAiConfig
 import io.github.researchforyounow.llm.providers.openai.request.AudioTranscriptionRequest
 import io.github.researchforyounow.llm.providers.openai.request.AudioTranslationRequest
 import io.github.researchforyounow.llm.providers.openai.request.ImageGenerationRequest
+import io.github.researchforyounow.llm.providers.openai.realtime.RealtimeTranscriptionConnection
+import io.github.researchforyounow.llm.providers.openai.realtime.RealtimeTranscriptionSessionRequest
+import io.github.researchforyounow.llm.providers.openai.realtime.RealtimeTranscriptionSessionResponse
 import io.github.researchforyounow.llm.providers.openai.response.AudioTranscriptionResponse
 import io.github.researchforyounow.llm.providers.openai.response.AudioTranscriptionStreamEvent
 import io.github.researchforyounow.llm.providers.openai.response.ImageResult
@@ -46,6 +49,31 @@ interface OpenAiClient : LlmClient {
     suspend fun translate(
         request: AudioTranslationRequest,
     ): Result<AudioTranscriptionResponse>
+
+    /**
+     * Creates a realtime transcription session and returns an ephemeral client secret.
+     */
+    suspend fun createRealtimeTranscriptionSession(
+        request: RealtimeTranscriptionSessionRequest,
+    ): Result<RealtimeTranscriptionSessionResponse>
+
+    /**
+     * Opens a realtime transcription WebSocket connection.
+     * If authToken is null, the OpenAI API key is used.
+     */
+    suspend fun openRealtimeTranscriptionConnection(
+        request: RealtimeTranscriptionSessionRequest,
+        authToken: String? = null,
+    ): Result<RealtimeTranscriptionConnection>
+
+    /**
+     * Opens a realtime transcription WebSocket connection using a session
+     * created via createRealtimeTranscriptionSession(...).
+     */
+    suspend fun openRealtimeTranscriptionConnection(
+        request: RealtimeTranscriptionSessionRequest,
+        session: RealtimeTranscriptionSessionResponse,
+    ): Result<RealtimeTranscriptionConnection>
 
     /**
      * Builder interface for creating OpenAiClient instances.
