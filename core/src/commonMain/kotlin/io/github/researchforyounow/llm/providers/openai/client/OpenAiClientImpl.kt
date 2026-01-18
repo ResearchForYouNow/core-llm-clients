@@ -4,10 +4,15 @@ import io.github.researchforyounow.llm.client.execute
 import io.github.researchforyounow.llm.error.LlmError
 import io.github.researchforyounow.llm.providers.openai.config.OpenAiConfig
 import io.github.researchforyounow.llm.providers.openai.config.StreamParsingMode
+import io.github.researchforyounow.llm.providers.openai.request.AudioResponseFormat
+import io.github.researchforyounow.llm.providers.openai.request.AudioTranscriptionRequest
+import io.github.researchforyounow.llm.providers.openai.request.AudioTranslationRequest
 import io.github.researchforyounow.llm.providers.openai.request.ImageGenerationRequest
 import io.github.researchforyounow.llm.providers.openai.request.ImageResponseFormat
 import io.github.researchforyounow.llm.providers.openai.request.OpenAiImageModel
 import io.github.researchforyounow.llm.providers.openai.request.OpenAiRequestBuilder
+import io.github.researchforyounow.llm.providers.openai.response.AudioTranscriptionResponse
+import io.github.researchforyounow.llm.providers.openai.response.AudioTranscriptionStreamEvent
 import io.github.researchforyounow.llm.providers.openai.response.ImageResult
 import io.github.researchforyounow.llm.providers.openai.response.OpenAiContentExtractor
 import io.github.researchforyounow.llm.request.GenerationRequest
@@ -17,6 +22,8 @@ import io.github.researchforyounow.llm.response.TypedStreamChunk
 import io.github.researchforyounow.llm.usage.LlmUsage
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.preparePost
@@ -24,6 +31,8 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readUTF8Line
@@ -250,6 +259,148 @@ class OpenAiClientImpl private constructor(
         }
     }
 
+    override suspend fun transcribe(
+        request: AudioTranscriptionRequest,
+    ): Result<AudioTranscriptionResponse> {
+        if (request.stream) {
+            return Result.failure(
+                LlmError.InvalidRequestError("Use streamTranscription(...) for streaming audio requests"),
+            )
+        }
+
+        return try {
+            logger.info("Creating transcription with OpenAI Audio API")
+            val call = suspend {
+                httpClient.post(audioApiUrl("transcriptions")) {
+                    header("Authorization", "Bearer ${config.apiKey}")
+                    config.organization?.takeIf { it.isNotBlank() }?.let { header("OpenAI-Organization", it) }
+                    request.idempotencyKey?.takeIf { it.isNotBlank() }?.let { header("Idempotency-Key", it) }
+                    request.tags?.takeIf { it.isNotEmpty() }?.let { tagsMap ->
+                        val sanitized = tagsMap.entries.joinToString(";") { (k, v) ->
+                            val sk = k.replace(";", "_").replace("=", ":")
+                            val sv = v.replace(";", "_").replace("=", ":")
+                            "$sk=$sv"
+                        }
+                        header("X-Request-Tags", sanitized)
+                    }
+                    setBody(buildAudioTranscriptionFormData(request, stream = false))
+                }
+            }
+
+            val response = when {
+                request.idempotencyKey?.isNotBlank() == true -> config.retryPolicy.execute { call() }
+                else -> call()
+            }
+
+            if (!response.status.isSuccess()) {
+                return Result.failure(
+                    handleAudioError(
+                        status = response.status.value,
+                        errorBody = response.bodyAsText(),
+                        response = response
+                    )
+                )
+            }
+
+            val bodyText = response.bodyAsText()
+            Result.success(parseAudioResponse(request.responseFormat, bodyText))
+        } catch (e: Exception) {
+            logger.error("Error creating transcription from OpenAI Audio API", e)
+            Result.failure(LlmError.fromException(e))
+        }
+    }
+
+    override fun streamTranscription(
+        request: AudioTranscriptionRequest,
+    ): Flow<AudioTranscriptionStreamEvent> {
+        return flow {
+            val apiRequest = request.copy(stream = true)
+
+            httpClient.preparePost(audioApiUrl("transcriptions")) {
+                header("Authorization", "Bearer ${config.apiKey}")
+                config.organization?.takeIf { it.isNotBlank() }?.let { header("OpenAI-Organization", it) }
+                request.idempotencyKey?.takeIf { it.isNotBlank() }?.let { header("Idempotency-Key", it) }
+                request.tags?.takeIf { it.isNotEmpty() }?.let { tagsMap ->
+                    val sanitized = tagsMap.entries.joinToString(";") { (k, v) ->
+                        val sk = k.replace(";", "_").replace("=", ":")
+                        val sv = v.replace(";", "_").replace("=", ":")
+                        "$sk=$sv"
+                    }
+                    header("X-Request-Tags", sanitized)
+                }
+                setBody(buildAudioTranscriptionFormData(apiRequest, stream = true))
+            }.execute { response ->
+                if (!response.status.isSuccess()) {
+                    val status = response.status.value
+                    val errorBody = response.bodyAsText()
+                    throw handleAudioError(status, errorBody, response)
+                }
+
+                val channel = response.bodyAsChannel()
+                while (!channel.isClosedForRead) {
+                    val line = channel.readUTF8Line() ?: break
+                    if (!line.startsWith("data:")) continue
+
+                    val data = line.removePrefix("data:").trim()
+                    if (data == "[DONE]") break
+
+                    try {
+                        val json = jsonParser.parseToJsonElement(data).jsonObject
+                        val type = json["type"]?.jsonPrimitive?.contentOrNull
+                        emit(AudioTranscriptionStreamEvent(type = type, payload = json))
+                    } catch (e: Exception) {
+                        logger.error("Error parsing transcription stream event", e)
+                    }
+                }
+            }
+        }
+    }
+
+    override suspend fun translate(
+        request: AudioTranslationRequest,
+    ): Result<AudioTranscriptionResponse> {
+        return try {
+            logger.info("Creating translation with OpenAI Audio API")
+            val call = suspend {
+                httpClient.post(audioApiUrl("translations")) {
+                    header("Authorization", "Bearer ${config.apiKey}")
+                    config.organization?.takeIf { it.isNotBlank() }?.let { header("OpenAI-Organization", it) }
+                    request.idempotencyKey?.takeIf { it.isNotBlank() }?.let { header("Idempotency-Key", it) }
+                    request.tags?.takeIf { it.isNotEmpty() }?.let { tagsMap ->
+                        val sanitized = tagsMap.entries.joinToString(";") { (k, v) ->
+                            val sk = k.replace(";", "_").replace("=", ":")
+                            val sv = v.replace(";", "_").replace("=", ":")
+                            "$sk=$sv"
+                        }
+                        header("X-Request-Tags", sanitized)
+                    }
+                    setBody(buildAudioTranslationFormData(request))
+                }
+            }
+
+            val response = when {
+                request.idempotencyKey?.isNotBlank() == true -> config.retryPolicy.execute { call() }
+                else -> call()
+            }
+
+            if (!response.status.isSuccess()) {
+                return Result.failure(
+                    handleAudioError(
+                        status = response.status.value,
+                        errorBody = response.bodyAsText(),
+                        response = response
+                    )
+                )
+            }
+
+            val bodyText = response.bodyAsText()
+            Result.success(parseAudioResponse(request.responseFormat, bodyText))
+        } catch (e: Exception) {
+            logger.error("Error creating translation from OpenAI Audio API", e)
+            Result.failure(LlmError.fromException(e))
+        }
+    }
+
     private fun validateImageRequest(
         req: ImageGenerationRequest,
     ) {
@@ -303,6 +454,98 @@ class OpenAiClientImpl private constructor(
             config.apiUrl.substring(0, idx + marker.length) + "images/generations"
         } else {
             "https://api.openai.com/v1/images/generations"
+        }
+    }
+
+    private fun audioApiUrl(
+        path: String,
+    ): String {
+        val marker = "/v1/"
+        val idx = config.apiUrl.indexOf(marker)
+        return when {
+            idx > 0 -> config.apiUrl.substring(0, idx + marker.length) + "audio/$path"
+            else -> "https://api.openai.com/v1/audio/$path"
+        }
+    }
+
+    private fun buildAudioTranscriptionFormData(
+        request: AudioTranscriptionRequest,
+        stream: Boolean,
+    ): MultiPartFormDataContent {
+        val formData = formData {
+            append(
+                "file",
+                request.file.bytes,
+                Headers.build {
+                    append(HttpHeaders.ContentType, request.file.contentType ?: "application/octet-stream")
+                    append(HttpHeaders.ContentDisposition, "filename=\"${request.file.fileName}\"")
+                },
+            )
+            append("model", request.model)
+            append("response_format", request.responseFormat.apiValue)
+            request.prompt?.let { append("prompt", it) }
+            request.language?.let { append("language", it) }
+            request.temperature?.let { append("temperature", it.toString()) }
+            request.chunkingStrategy?.let { append("chunking_strategy", it) }
+            request.timestampGranularities?.forEach { append("timestamp_granularities[]", it) }
+            request.include?.forEach { append("include[]", it) }
+            request.knownSpeakerNames?.forEach { append("known_speaker_names[]", it) }
+            request.knownSpeakerReferences?.forEach { append("known_speaker_references[]", it) }
+            if (stream) {
+                append("stream", "true")
+            }
+        }
+        return MultiPartFormDataContent(formData)
+    }
+
+    private fun buildAudioTranslationFormData(
+        request: AudioTranslationRequest,
+    ): MultiPartFormDataContent {
+        val formData = formData {
+            append(
+                "file",
+                request.file.bytes,
+                Headers.build {
+                    append(HttpHeaders.ContentType, request.file.contentType ?: "application/octet-stream")
+                    append(HttpHeaders.ContentDisposition, "filename=\"${request.file.fileName}\"")
+                },
+            )
+            append("model", request.model)
+            append("response_format", request.responseFormat.apiValue)
+            request.prompt?.let { append("prompt", it) }
+            request.temperature?.let { append("temperature", it.toString()) }
+        }
+        return MultiPartFormDataContent(formData)
+    }
+
+    private fun handleAudioError(
+        status: Int,
+        errorBody: String,
+        response: io.ktor.client.statement.HttpResponse,
+    ): LlmError {
+        logger.error("OpenAI Audio API error response: {} - {}", status, errorBody)
+        if (status == 429) {
+            val retryAfterHeader = response.headers["Retry-After"]
+            val retryAfter = parseRetryAfterSeconds(retryAfterHeader)
+            return LlmError.RateLimitError(retryAfterSeconds = retryAfter, message = "Rate limited by OpenAI")
+        }
+        return LlmError.ProviderHttpError(status, errorBody)
+    }
+
+    private fun parseAudioResponse(
+        format: AudioResponseFormat,
+        bodyText: String,
+    ): AudioTranscriptionResponse {
+        return when (format) {
+            AudioResponseFormat.TEXT,
+            AudioResponseFormat.SRT,
+            AudioResponseFormat.VTT -> AudioTranscriptionResponse(text = bodyText)
+            AudioResponseFormat.JSON,
+            AudioResponseFormat.VERBOSE_JSON,
+            AudioResponseFormat.DIARIZED_JSON -> jsonParser.decodeFromString(
+                deserializer = AudioTranscriptionResponse.serializer(),
+                string = bodyText,
+            )
         }
     }
 
