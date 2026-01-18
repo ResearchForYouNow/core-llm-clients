@@ -12,7 +12,8 @@ Provider limits apply (file size, formats, model availability).
 Audio file inputs
 -----------------
 
-Use `AudioFile` with raw bytes, a filename, and a content type.
+Use `AudioFile` with raw bytes, a filename, and a content type. By default it enforces
+a 25 MB size limit (`AudioFile.DEFAULT_MAX_BYTES`). Override with `maxBytes` if needed.
 
 ```kotlin
 import io.github.researchforyounow.llm.providers.openai.request.AudioFile
@@ -119,6 +120,7 @@ val connection = client.openRealtimeTranscriptionConnection(request, session).ge
 val controller = RealtimeTranscriptionController(connection)
 
 controller.start()
+controller.appendAudio(pcm16Chunk)
 
 // Stream output (deltas + completed)
 controller.events.collect { event ->

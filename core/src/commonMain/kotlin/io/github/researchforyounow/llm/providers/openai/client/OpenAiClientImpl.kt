@@ -4,6 +4,7 @@ import io.github.researchforyounow.llm.client.execute
 import io.github.researchforyounow.llm.error.LlmError
 import io.github.researchforyounow.llm.providers.openai.config.OpenAiConfig
 import io.github.researchforyounow.llm.providers.openai.config.StreamParsingMode
+import io.github.researchforyounow.llm.providers.openai.request.AudioMultipartBuilder
 import io.github.researchforyounow.llm.providers.openai.request.AudioResponseFormat
 import io.github.researchforyounow.llm.providers.openai.request.AudioTranscriptionRequest
 import io.github.researchforyounow.llm.providers.openai.request.AudioTranslationRequest
@@ -27,8 +28,6 @@ import io.github.researchforyounow.llm.response.TypedStreamChunk
 import io.github.researchforyounow.llm.usage.LlmUsage
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.preparePost
@@ -38,8 +37,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.client.request.url
 import io.ktor.http.ContentType
-import io.ktor.http.Headers
-import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readUTF8Line
@@ -293,7 +290,7 @@ class OpenAiClientImpl private constructor(
                         }
                         header("X-Request-Tags", sanitized)
                     }
-                    setBody(buildAudioTranscriptionFormData(request, stream = false))
+                    setBody(AudioMultipartBuilder.buildTranscriptionContent(request, stream = false))
                 }
             }
 
@@ -325,6 +322,7 @@ class OpenAiClientImpl private constructor(
     ): Flow<AudioTranscriptionStreamEvent> {
         return flow {
             val apiRequest = request.copy(stream = true)
+            val sse = SseLineAccumulator()
 
             httpClient.preparePost(audioApiUrl("transcriptions")) {
                 header("Authorization", "Bearer ${config.apiKey}")
@@ -338,7 +336,7 @@ class OpenAiClientImpl private constructor(
                     }
                     header("X-Request-Tags", sanitized)
                 }
-                setBody(buildAudioTranscriptionFormData(apiRequest, stream = true))
+                setBody(AudioMultipartBuilder.buildTranscriptionContent(apiRequest, stream = true))
             }.execute { response ->
                 if (!response.status.isSuccess()) {
                     val status = response.status.value
@@ -349,13 +347,10 @@ class OpenAiClientImpl private constructor(
                 val channel = response.bodyAsChannel()
                 while (!channel.isClosedForRead) {
                     val line = channel.readUTF8Line() ?: break
-                    if (!line.startsWith("data:")) continue
-
-                    val data = line.removePrefix("data:").trim()
-                    if (data == "[DONE]") break
-
+                    val payload = sse.onLine(line) ?: continue
+                    if (payload == "[DONE]") break
                     try {
-                        val json = jsonParser.parseToJsonElement(data).jsonObject
+                        val json = jsonParser.parseToJsonElement(payload).jsonObject
                         val type = json["type"]?.jsonPrimitive?.contentOrNull
                         emit(AudioTranscriptionStreamEvent(type = type, payload = json))
                     } catch (e: Exception) {
@@ -384,7 +379,7 @@ class OpenAiClientImpl private constructor(
                         }
                         header("X-Request-Tags", sanitized)
                     }
-                    setBody(buildAudioTranslationFormData(request))
+                    setBody(AudioMultipartBuilder.buildTranslationContent(request))
                 }
             }
 
@@ -654,56 +649,6 @@ class OpenAiClientImpl private constructor(
         return buildJsonObject {
             put("type", noiseReduction.type)
         }
-    }
-
-    private fun buildAudioTranscriptionFormData(
-        request: AudioTranscriptionRequest,
-        stream: Boolean,
-    ): MultiPartFormDataContent {
-        val formData = formData {
-            append(
-                "file",
-                request.file.bytes,
-                Headers.build {
-                    append(HttpHeaders.ContentType, request.file.contentType ?: "application/octet-stream")
-                    append(HttpHeaders.ContentDisposition, "filename=\"${request.file.fileName}\"")
-                },
-            )
-            append("model", request.model)
-            append("response_format", request.responseFormat.apiValue)
-            request.prompt?.let { append("prompt", it) }
-            request.language?.let { append("language", it) }
-            request.temperature?.let { append("temperature", it.toString()) }
-            request.chunkingStrategy?.let { append("chunking_strategy", it) }
-            request.timestampGranularities?.forEach { append("timestamp_granularities[]", it) }
-            request.include?.forEach { append("include[]", it) }
-            request.knownSpeakerNames?.forEach { append("known_speaker_names[]", it) }
-            request.knownSpeakerReferences?.forEach { append("known_speaker_references[]", it) }
-            if (stream) {
-                append("stream", "true")
-            }
-        }
-        return MultiPartFormDataContent(formData)
-    }
-
-    private fun buildAudioTranslationFormData(
-        request: AudioTranslationRequest,
-    ): MultiPartFormDataContent {
-        val formData = formData {
-            append(
-                "file",
-                request.file.bytes,
-                Headers.build {
-                    append(HttpHeaders.ContentType, request.file.contentType ?: "application/octet-stream")
-                    append(HttpHeaders.ContentDisposition, "filename=\"${request.file.fileName}\"")
-                },
-            )
-            append("model", request.model)
-            append("response_format", request.responseFormat.apiValue)
-            request.prompt?.let { append("prompt", it) }
-            request.temperature?.let { append("temperature", it.toString()) }
-        }
-        return MultiPartFormDataContent(formData)
     }
 
     private fun handleAudioError(

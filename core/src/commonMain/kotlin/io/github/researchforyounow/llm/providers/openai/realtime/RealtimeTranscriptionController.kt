@@ -14,6 +14,8 @@ class RealtimeTranscriptionController(
 
     fun resume() = connection.resume()
 
+    suspend fun appendAudio(bytes: ByteArray) = connection.appendAudio(bytes)
+
     suspend fun stop() = connection.stop()
 
     suspend fun awaitNextTranscript(): String? = connection.awaitNextTranscript()
