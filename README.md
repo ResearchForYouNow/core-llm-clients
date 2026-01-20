@@ -23,7 +23,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.github.researchforyounow:llm-clients:0.7.3")
+    implementation("io.github.researchforyounow:llm-clients:0.7.5")
 }
 ```
 
@@ -33,7 +33,7 @@ dependencies {
 <dependency>
     <groupId>io.github.researchforyounow</groupId>
     <artifactId>llm-clients</artifactId>
-    <version>0.7.3</version>
+    <version>0.7.5</version>
 </dependency>
 ```
 
@@ -330,3 +330,55 @@ The LlmClientFactory injects API keys from your environment or secrets manager (
 - GEMINI_API_KEY: Gemini secret used by LlmClientFactory.
 
 See examples in examples/ for usage, including streaming and structured responses.
+
+## Speech-to-Text (OpenAI)
+
+### File transcription
+
+```kotlin
+val audioFile = AudioFile(
+    bytes = File("/path/to/audio.mp3").readBytes(),
+    fileName = "audio.mp3",
+    contentType = "audio/mpeg",
+)
+
+val request = AudioTranscriptionRequest(
+    file = audioFile,
+    model = "gpt-4o-transcribe",
+    responseFormat = AudioResponseFormat.TEXT,
+)
+
+val result = openAiClient.transcribe(request).getOrThrow()
+println(result.text)
+```
+
+### File transcription (streaming results)
+
+```kotlin
+val request = AudioTranscriptionRequest(
+    file = audioFile,
+    model = "gpt-4o-mini-transcribe",
+    responseFormat = AudioResponseFormat.TEXT,
+    stream = true,
+)
+
+openAiClient.streamTranscription(request).collect { event ->
+    println(event.type)
+}
+```
+
+### Realtime transcription (live audio)
+
+```kotlin
+val request = RealtimeTranscriptionSessionRequest(
+    transcriptionModel = "gpt-4o-mini-transcribe",
+    // language defaults to "en"
+)
+
+val session = openAiClient.createRealtimeTranscriptionSession(request).getOrThrow()
+val connection = openAiClient.openRealtimeTranscriptionConnection(request, session).getOrThrow()
+val controller = RealtimeTranscriptionController(connection)
+
+controller.start()
+// appendAudio(...) with PCM16 bytes from your mic
+```

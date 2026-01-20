@@ -50,3 +50,5 @@ keys.properties
 local.properties
 gradle.properties.local
 **/signing.properties
+/.idea/artifacts/core_jvm_0_7_3.xml
+/.idea/artifacts/core_jvm_0_7_4.xml
